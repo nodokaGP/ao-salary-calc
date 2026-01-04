@@ -5,23 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>最強給料計算機 | Ao Studio</title>
     <style>
-        /* 簡単なデザイン（スマホで見やすく） */
-        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; background: #fdfdfd; color: #333; }
+        h1 { font-size: 24px; text-align: center; margin-bottom: 20px; }
+        
+        /* 入力エリアのデザイン */
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="time"], input[type="number"] {
+            width: 100%; padding: 12px; font-size: 18px;
+            border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;
+        }
+
+        /* 計算ボタン */
         button { 
             width: 100%; padding: 15px; background: #0070f3; color: white; 
             font-size: 18px; border: none; border-radius: 8px; cursor: pointer; 
-            margin-top: 20px;
+            font-weight: bold; margin-top: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        button:active { transform: translateY(2px); box-shadow: none; }
+
+        /* 結果エリア */
+        #result { margin-top: 25px; }
     </style>
 </head>
 <body>
 
     <h1>💰 最強給料計算機</h1>
-    <p>今の設定：15:50 (27:50) 以降は即残業！</p>
+
+    <div class="input-group">
+        <label>開始時間</label>
+        <input type="time" id="startTime" value="19:00">
+    </div>
+
+    <div class="input-group">
+        <label>終了時間</label>
+        <input type="time" id="endTime" value="07:10">
+    </div>
+
+    <div class="input-group">
+        <label>休憩時間 (分)</label>
+        <input type="number" id="breakMins" value="60">
+    </div>
 
     <button onclick="calculateSalary()">計算する</button>
 
-    <div id="result" style="margin-top: 20px;"></div>
+    <div id="result"></div>
 
     <script src="script.js"></script>
 
