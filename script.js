@@ -1,43 +1,53 @@
 function calculateSalary() {
-    // --- 1. 設定（ここは画面の入力値から取ってくるように後で変更可） ---
+    // --- 1. 画面の入力値を取得する ---
     const hourlyWage = 1000; // 時給
-    const taxRate = 0.03;    // 税金3% (0.03)
+    const taxRate = 0.03;    // 税金3%
 
-    // 時間の入力（例：19:00 ～ 翌07:10）
-    // 計算しやすいようにすべて「分」に直します
-    const startHour = 19;
-    const startMin = 0;
-    const endHour = 31; // 翌7時は +24して 31時と考えます
-    const endMin = 10;
-    
-    // ★重要：会社の定時ルール（翌03:50）
-    const fixTimeHour = 27; // 翌3時は +24して 27時
-    const fixTimeMin = 50;
-    const fixTimeTotal = fixTimeHour * 60 + fixTimeMin;
+    // HTMLの入力ボックスから値を取ってくる
+    const startTimeStr = document.getElementById('startTime').value; // "19:00"
+    const endTimeStr = document.getElementById('endTime').value;     // "07:10"
+    const breakMinutes = parseInt(document.getElementById('breakMins').value) || 0;
 
-    // --- 2. 計算ロジック ---
-    
-    // 開始と終了を「分」にする
-    const startTotal = startHour * 60 + startMin;
-    const endTotal = endHour * 60 + endMin;
+    // 時間(HH:MM)を分に変換する関数
+    function timeToMins(timeStr) {
+        const parts = timeStr.split(':');
+        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    }
+
+    let startTotal = timeToMins(startTimeStr);
+    let endTotal = timeToMins(endTimeStr);
+
+    // ★重要：もし終了時間が開始時間より小さければ「翌日」とみなす
+    // 例：開始19:00(1140) 終了07:00(420) → 終了に24時間(1440)を足す
+    if (endTotal < startTotal) {
+        endTotal += 24 * 60;
+    }
+
+    // --- 会社の特殊ルール設定 ---
+    // 定時境界線：翌03:50 (27:50 = 1670分)
+    // ※もし日勤で使うならここを15:50の設定に変える必要がありますが、一旦夜勤専用で
+    const fixTimeTotal = 27 * 60 + 50; 
+
+    // --- 2. 計算ロジック (ここは前回と同じ) ---
     
     // 全体の拘束時間
     let totalWorkMinutes = endTotal - startTotal;
+    totalWorkMinutes -= breakMinutes; // 休憩を引く
 
-    // ここで休憩時間を引く（例として60分引きます）
-    // ※実際はここを自動計算ロジックに差し替えます
-    const breakMinutes = 60; 
-    totalWorkMinutes -= breakMinutes;
-
-    // ★定時と残業の切り分け
     let regularMinutes = 0;
     let overtimeMinutes = 0;
 
-    // 定時（03:50）より前か後かで分ける
+    // 定時（03:50）判定
     if (endTotal > fixTimeTotal) {
-        // 定時を超えている場合
-        regularMinutes = (fixTimeTotal - startTotal) - breakMinutes; // ※休憩が定時内にあると仮定
-        overtimeMinutes = endTotal - fixTimeTotal; // 3:50以降は全部残業！
+        // 定時を超えている
+        // 定時までの時間 - 休憩
+        regularMinutes = (fixTimeTotal - startTotal) - breakMinutes;
+        
+        // もし休憩引きすぎてマイナスになったら0にする（念のため）
+        if (regularMinutes < 0) regularMinutes = 0;
+
+        // 3:50以降は全部残業
+        overtimeMinutes = endTotal - fixTimeTotal;
     } else {
         // 定時内の場合
         regularMinutes = totalWorkMinutes;
@@ -47,39 +57,40 @@ function calculateSalary() {
     // 金額計算
     const basePay = Math.floor(hourlyWage * (regularMinutes / 60));
     const overtimePay = Math.floor((hourlyWage * 1.25) * (overtimeMinutes / 60));
-    
-    // ※今回はシンプルにするため深夜手当は割愛していますが、ここに追加できます
-
     const totalPay = basePay + overtimePay;
-    const takeHomePay = Math.floor(totalPay * (1 - taxRate)); // 税引き後
+    const takeHomePay = Math.floor(totalPay * (1 - taxRate));
 
-    // --- 3. 結果を画面に表示する（HTML生成） ---
-    
-    // 残業時間の表示形式を作る（例：3時間20分 / 200分）
+    // --- 3. 結果表示 ---
     const otHr = Math.floor(overtimeMinutes / 60);
     const otMin = overtimeMinutes % 60;
     const otText = `${otHr}時間${otMin}分 <span style="font-size:0.9em; color:#666;">(${overtimeMinutes}分)</span>`;
 
-    // 結果を表示するエリア（HTML側に <div id="result-area"></div> が必要）
+    const regHr = Math.floor(regularMinutes / 60);
+    const regMin = regularMinutes % 60;
+
     const resultHtml = `
-        <div style="background:#f0f8ff; padding:15px; border-radius:8px; border:2px solid #0070f3;">
-            <h3 style="margin-top:0;">💰 支給額: ¥${totalPay.toLocaleString()}</h3>
-            <p style="color:#555;">(手取り目安: ¥${takeHomePay.toLocaleString()})</p>
-            <hr>
-            <p><strong>① 通常勤務</strong><br>
-            ${Math.floor(regularMinutes/60)}時間${regularMinutes%60}分<br>
-            ¥${basePay.toLocaleString()}</p>
+        <div style="background:#f0f8ff; padding:15px; border-radius:8px; border:2px solid #0070f3; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h3 style="margin-top:0; border-bottom:1px solid #ddd; padding-bottom:10px;">💰 支給額: ¥${totalPay.toLocaleString()}</h3>
+            <p style="color:#555; margin-bottom:0;">(手取り目安: ¥${takeHomePay.toLocaleString()})</p>
+            <hr style="border:0; border-top:1px dashed #ccc; margin:15px 0;">
             
-            <p><strong>② 残業時間 (単価 ¥${(hourlyWage * 1.25).toLocaleString()})</strong><br>
-            ${otText}<br>
-            <span style="color:#d32f2f; font-weight:bold;">¥${overtimePay.toLocaleString()}</span></p>
+            <div style="margin-bottom:15px;">
+                <strong>① 通常勤務 (～03:50)</strong><br>
+                ${regHr}時間${regMin}分<br>
+                ¥${basePay.toLocaleString()}
+            </div>
             
-            <p style="font-size:0.8em; color:#888;">
-            ※定時(${fixTimeHour-24}:${fixTimeMin})以降は自動的に残業(1.25倍)で計算
+            <div>
+                <strong>② 残業時間 (単価 ¥1,250)</strong><br>
+                ${otText}<br>
+                <span style="color:#d32f2f; font-weight:bold; font-size:1.2em;">¥${overtimePay.toLocaleString()}</span>
+            </div>
+            
+            <p style="font-size:0.75em; color:#888; margin-top:15px; text-align:right;">
+            ※03:50以降は自動的に残業計算
             </p>
         </div>
     `;
 
-    // 画面に埋め込む
     document.getElementById('result').innerHTML = resultHtml;
 }
